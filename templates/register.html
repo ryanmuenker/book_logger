@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" class="card p-3" style="max-width:420px">
+  <h5>Create account</h5>
+  <label class="form-label mt-2">Email</label>
+  <input name="email" class="form-control" type="email" required>
+  <label class="form-label mt-2">Password</label>
+  <input name="password" class="form-control" type="password" required>
+  <button class="btn btn-primary mt-3">Register</button>
+  <a class="btn btn-link" href="{{ url_for('auth.login') }}">Already have an account?</a>
+</form>
+{% endblock %}
+

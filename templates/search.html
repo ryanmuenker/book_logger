@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card p-3">
+  <div class="input-group mb-3">
+    <input id="searchQuery" class="form-control" placeholder="Search books by title, author, or ISBN…">
+    <button id="searchBtn" class="btn btn-primary">Search</button>
+  </div>
+  <div id="searchResults" class="list-group"></div>
+  <div id="searchEmpty" class="text-muted" style="display:none">No results.</div>
+  <div id="searchLoading" class="text-muted" style="display:none">Searching…</div>
+  <div id="searchError" class="text-danger" style="display:none">Something went wrong.</div>
+{% endblock %}
+
