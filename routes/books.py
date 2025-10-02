@@ -1,5 +1,6 @@
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response
+import requests
 from models import db, Book, UserBook
 from flask_login import login_required, current_user
 from services.isbn import search_books
@@ -44,6 +45,7 @@ def add_to_library():
     isbn = (data.get('isbn') or '').strip()
     title = (data.get('title') or '').strip()
     author = (data.get('author') or '').strip()
+    cover_id = data.get('cover_id')
     if not isbn and (not title or not author):
         return jsonify({"error": "isbn or (title and author) required"}), 400
 
@@ -54,7 +56,7 @@ def add_to_library():
     if not book:
         if not title or not author:
             return jsonify({"error": "title and author required to create book"}), 400
-        book = Book(title=title, author=author, isbn=isbn)
+        book = Book(title=title, author=author, isbn=isbn, cover_id=cover_id)
         db.session.add(book)
         db.session.commit()
 
@@ -132,3 +134,98 @@ def books_delete(book_id):
     db.session.commit()
     flash("Book deleted.")
     return redirect(url_for("books.books_list"))
+
+
+@bp.route('/export.json')
+def export_json():
+    books = Book.query.order_by(Book.id.asc()).all()
+    payload = []
+    for b in books:
+        payload.append({
+            'id': b.id,
+            'title': b.title,
+            'author': b.author,
+            'isbn': b.isbn,
+            'cover_id': b.cover_id,
+            'start_date': b.start_date,
+            'finish_date': b.finish_date,
+            'rating': b.rating,
+            'tags': b.tags,
+            'notes': b.notes,
+        })
+    return jsonify(payload)
+
+
+@bp.route('/api/my.json')
+@login_required
+def my_json():
+    links = (
+        db.session.query(UserBook, Book)
+        .join(Book, UserBook.book_id == Book.id)
+        .filter(UserBook.user_id == current_user.id)
+        .order_by(UserBook.id.desc())
+        .all()
+    )
+    items = []
+    for link, book in links:
+        items.append({
+            'book': {
+                'id': book.id,
+                'title': book.title,
+                'author': book.author,
+                'isbn': book.isbn,
+                'cover_id': book.cover_id,
+            },
+            'status': link.status,
+            'rating': link.rating,
+        })
+    return jsonify(items)
+
+
+@bp.route('/api/backfill_covers', methods=['POST'])
+@login_required
+def backfill_covers():
+    updated = 0
+    skipped = 0
+    failed = 0
+    books = Book.query.all()
+    for b in books:
+        if b.cover_id or (b.isbn and str(b.isbn).strip()):
+            skipped += 1
+            continue
+        q = f"{b.title} {b.author}".strip()
+        try:
+            r = requests.get('https://openlibrary.org/search.json', params={'q': q, 'limit': 1}, timeout=5)
+            if r.status_code == 200:
+                docs = (r.json() or {}).get('docs') or []
+                if docs:
+                    cid = docs[0].get('cover_i')
+                    if cid:
+                        b.cover_id = int(cid)
+                        updated += 1
+        except Exception:
+            failed += 1
+    if updated:
+        db.session.commit()
+    return jsonify({"updated": updated, "skipped": skipped, "failed": failed})
+
+
+@bp.route('/export.csv')
+def export_csv():
+    books = Book.query.order_by(Book.id.asc()).all()
+    lines = [
+        'id,title,author,isbn,start_date,finish_date,rating,tags,notes'
+    ]
+    def esc(value: str) -> str:
+        if value is None:
+            return ''
+        text = str(value)
+        if any(c in text for c in [',', '"', '\n']):
+            return '"' + text.replace('"', '""') + '"'
+        return text
+    for b in books:
+        lines.append(','.join([
+            esc(b.id), esc(b.title), esc(b.author), esc(b.isbn), esc(b.start_date), esc(b.finish_date), esc(b.rating), esc(b.tags), esc(b.notes)
+        ]))
+    csv_text = '\n'.join(lines) + '\n'
+    return Response(csv_text, mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=books.csv'})

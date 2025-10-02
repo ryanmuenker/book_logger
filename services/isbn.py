@@ -81,7 +81,8 @@ def search_books(query: str, limit: int = 10, timeout_seconds: float = 5.0) -> L
             # Prefer 13-digit if present
             isbn13 = next((x for x in isbns if len(x.replace("-", "")) == 13), None)
             isbn = isbn13 or isbns[0]
-        results.append({"title": title, "author": author, "isbn": isbn})
+        cover_id = d.get('cover_i')
+        results.append({"title": title, "author": author, "isbn": isbn, "cover_id": cover_id})
     return results
 
 

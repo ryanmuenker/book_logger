@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="mb-3">Flashcard Review</h4>
+
+{% if not entries %}
+<p class="text-muted">No items due. Great job!</p>
+{% else %}
+<div class="vstack gap-3">
+  {% for e in entries %}
+  <div class="border rounded p-3">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <div class="small text-muted">Book #{{ e.book_id }}</div>
+        <h5 class="mb-1">{{ e.word }}</h5>
+        {% if e.quote %}<blockquote class="mb-2">{{ e.quote }}</blockquote>{% endif %}
+        <details>
+          <summary>Show definition</summary>
+          <div class="mt-2">{{ e.definition }}</div>
+        </details>
+      </div>
+      <div>
+        <form class="d-inline" method="post" action="{{ url_for('vocab.submit_answer', entry_id=e.id) }}">
+          <input type="hidden" name="result" value="correct" />
+          <button class="btn btn-sm btn-success">I knew it</button>
+        </form>
+        <form class="d-inline" method="post" action="{{ url_for('vocab.submit_answer', entry_id=e.id) }}">
+          <input type="hidden" name="result" value="wrong" />
+          <button class="btn btn-sm btn-outline-danger">I forgot</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+

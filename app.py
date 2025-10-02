@@ -6,7 +6,7 @@ app = Flask(__name__)
 app.config.from_object('config')
 
 # Initialize db and models
-from models import db, User
+from models import db, User, VocabEntry
 from sqlalchemy import text
 db.init_app(app)
 
@@ -20,14 +20,19 @@ with app.app_context():
         if 'isbn' not in cols:
             db.session.execute(text("ALTER TABLE book ADD COLUMN isbn VARCHAR(20)"))
             db.session.commit()
+        if 'cover_id' not in cols:
+            db.session.execute(text("ALTER TABLE book ADD COLUMN cover_id INTEGER"))
+            db.session.commit()
     except Exception:
         db.session.rollback()
 
 # Register blueprints
 from routes.books import bp as books_bp
 from routes.auth import bp as auth_bp
+from routes.vocab import bp as vocab_bp
 app.register_blueprint(books_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(vocab_bp)
 
 # Auth setup
 login_manager = LoginManager()
