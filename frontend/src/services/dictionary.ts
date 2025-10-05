@@ -20,7 +20,14 @@ export async function fetchDefinition(word: string): Promise<DictionaryResult | 
   const cleanWord = word.trim().toLowerCase()
   
   try {
-    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+    
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`, {
+      signal: controller.signal
+    })
+    
+    clearTimeout(timeoutId)
     
     if (!response.ok) {
       if (response.status === 404) {
@@ -58,13 +65,25 @@ export async function fetchDefinition(word: string): Promise<DictionaryResult | 
 
 // Helper to get the first definition as a simple string
 export async function getFirstDefinition(word: string): Promise<string | null> {
-  const result = await fetchDefinition(word)
-  if (!result || !result.meanings.length) return null
+  // Add timeout to prevent hanging requests
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
   
-  const firstMeaning = result.meanings[0]
-  if (!firstMeaning.definitions.length) return null
-  
-  return firstMeaning.definitions[0].definition
+  try {
+    const result = await fetchDefinition(word)
+    clearTimeout(timeoutId)
+    
+    if (!result || !result.meanings.length) return null
+    
+    const firstMeaning = result.meanings[0]
+    if (!firstMeaning.definitions.length) return null
+    
+    return firstMeaning.definitions[0].definition
+  } catch (error) {
+    clearTimeout(timeoutId)
+    console.warn('Dictionary API timeout or error:', error)
+    return null
+  }
 }
 
 // Helper to format a full definition nicely

@@ -99,12 +99,12 @@ export function Books() {
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
                 />
               )}
-              <div className="font-medium"><Link to={`/books/${b.id}`}>{b.title}</Link></div>
+              <div className="font-medium text-gray-900"><Link to={`/books/${b.id}`} className="text-gray-900 hover:text-blue-600">{b.title}</Link></div>
               <div className="text-sm text-gray-500">{b.author}</div>
-              <div className="text-xs mt-1">Rating: {b.rating ?? '-'}</div>
+              <div className="text-xs mt-1 text-gray-700">Rating: {b.rating ?? '-'}</div>
               <div className="mt-2 space-x-1">
                 {(b.tags || '').split(',').map((t: string) => t.trim()).filter(Boolean).map((t: string) => (
-                  <span key={t} className="inline-block text-xs bg-neutral-100 dark:bg-neutral-800 rounded px-2 py-0.5">{t}</span>
+                  <span key={t} className="inline-block text-xs bg-gray-100 text-gray-700 rounded px-2 py-0.5">{t}</span>
                 ))}
               </div>
               <div className="mt-3 flex gap-2">

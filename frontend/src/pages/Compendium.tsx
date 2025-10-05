@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import axios from 'axios'
 import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 import { getFirstDefinition } from '../services/dictionary'
 
 export function Compendium() {
@@ -37,9 +38,13 @@ export function Compendium() {
         const def = await getFirstDefinition(word)
         if (def) {
           setDefinition(def)
+        } else {
+          // Show user-friendly message when API fails
+          setDefinition('')
         }
       } catch (error) {
         console.error('Failed to fetch definition:', error)
+        setDefinition('')
       } finally {
         setLoadingDefinition(false)
       }
@@ -77,8 +82,8 @@ export function Compendium() {
     }
   }
 
-  if (error) return <div className="text-red-600">{error}</div>
-  if (!data) return <div>Loading…</div>
+  if (error) return <div className="text-red-600 bg-white p-4 rounded">{error}</div>
+  if (!data) return <div className="text-gray-900 bg-white p-4 rounded">Loading…</div>
 
   const book = data.book
   const entries = data.entries ?? []
@@ -87,7 +92,7 @@ export function Compendium() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-baseline justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-semibold mb-0">Compendium: {book.title}</h2>
+          <h2 className="text-2xl font-semibold mb-0 text-gray-900">Compendium: {book.title}</h2>
           <div className="text-gray-500">{book.author}</div>
         </div>
         <Link to={`/books/${book.id}`}>
@@ -97,15 +102,14 @@ export function Compendium() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-lg font-medium mb-3">Add Vocabulary</h3>
+          <h3 className="text-lg font-medium mb-3 text-gray-900">Add Vocabulary</h3>
           <form className="space-y-3" onSubmit={add}>
             <div>
-              <input 
+              <Input 
                 value={word}
                 onChange={e => setWord(e.target.value)}
                 placeholder="Word" 
                 required 
-                className="w-full border rounded px-3 py-2" 
               />
               {loadingDefinition && (
                 <div className="text-xs text-gray-500 mt-1">Fetching definition...</div>
@@ -115,27 +119,29 @@ export function Compendium() {
               value={definition}
               onChange={e => setDefinition(e.target.value)}
               placeholder="Definition (auto-filled from dictionary)" 
-              className="w-full border rounded px-3 py-2" 
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 bg-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50" 
+              rows={3}
             />
             <textarea 
               value={quote}
               onChange={e => setQuote(e.target.value)}
               placeholder="Quote (optional)" 
-              className="w-full border rounded px-3 py-2" 
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 bg-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50" 
+              rows={2}
             />
             <Button type="submit" disabled={saving}>{saving ? 'Adding…' : 'Add'}</Button>
           </form>
         </div>
 
         <div>
-          <h3 className="text-lg font-medium mb-3">Vocabulary ({entries.length})</h3>
+          <h3 className="text-lg font-medium mb-3 text-gray-900">Vocabulary ({entries.length})</h3>
           <div className="space-y-3">
             {entries.map((e: any) => (
               <Card key={e.id}>
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="font-semibold text-lg">{e.word}</div>
+                      <div className="font-semibold text-lg text-gray-900">{e.word}</div>
                       <div className="text-sm text-gray-500 mt-1">{e.definition || 'No definition'}</div>
                       {e.quote && (
                         <blockquote className="text-sm italic border-l-2 border-gray-200 pl-3 mt-2">

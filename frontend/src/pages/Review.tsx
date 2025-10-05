@@ -124,7 +124,7 @@ export function Review() {
   if (completed) {
     return (
       <div className="text-center py-8">
-        <h2 className="text-2xl font-semibold mb-4">🎉 Review Complete!</h2>
+        <h2 className="text-2xl font-semibold mb-4 text-gray-900">🎉 Review Complete!</h2>
         <p className="text-gray-500 mb-6">Great job! You've finished all cards in your review queue.</p>
         <div className="space-x-4">
           <Button onClick={reset}>Review Again</Button>
@@ -136,7 +136,7 @@ export function Review() {
   if (entries.length === 0) {
     return (
       <div className="text-center py-8">
-        <h2 className="text-2xl font-semibold mb-4">📚 No vocabulary yet!</h2>
+        <h2 className="text-2xl font-semibold mb-4 text-gray-900">📚 No vocabulary yet!</h2>
         <p className="text-gray-500 mb-6">Add some vocabulary to your books to get started with flashcard review.</p>
         <Link to="/"><Button>Back to Library</Button></Link>
       </div>
@@ -153,7 +153,7 @@ export function Review() {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold">Vocabulary List</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">Vocabulary List</h2>
           <Button onClick={() => setViewMode('flashcard')}>
             Start Flashcard Review
           </Button>
@@ -162,15 +162,15 @@ export function Review() {
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card className="p-4 text-center">
-            <div className="text-2xl font-semibold">{entries.length}</div>
+            <div className="text-2xl font-semibold text-gray-900">{entries.length}</div>
             <div className="text-sm text-gray-500">{selectedBookId ? 'Filtered Cards' : 'Total Cards'}</div>
           </Card>
           <Card className="p-4 text-center">
-            <div className="text-2xl font-semibold">{entries.filter(e => e.srs_box === 1).length}</div>
+            <div className="text-2xl font-semibold text-gray-900">{entries.filter(e => e.srs_box === 1).length}</div>
             <div className="text-sm text-gray-500">New Cards</div>
           </Card>
           <Card className="p-4 text-center">
-            <div className="text-2xl font-semibold">{availableBooks.length}</div>
+            <div className="text-2xl font-semibold text-gray-900">{availableBooks.length}</div>
             <div className="text-sm text-gray-500">Books</div>
           </Card>
         </div>
@@ -178,7 +178,7 @@ export function Review() {
         {/* Book Filter */}
         {availableBooks.length > 1 && (
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Filter by book:</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Filter by book:</label>
             <Select
               value={selectedBookId?.toString() || 'all'}
               onValueChange={(value) => changeBookFilter(value === 'all' ? null : parseInt(value))}
@@ -205,7 +205,7 @@ export function Review() {
               <div className="flex items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold">{entry.word}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{entry.word}</h3>
                     <Badge 
                       variant={
                         entry.srs_box === 1 ? 'new' :
@@ -242,7 +242,7 @@ export function Review() {
 
         {entries.length === 0 && (
           <Card className="p-8 text-center">
-            <h3 className="text-lg font-medium mb-2">No vocabulary found</h3>
+            <h3 className="text-lg font-medium mb-2 text-gray-900">No vocabulary found</h3>
             <p className="text-gray-500 mb-4">
               {selectedBookId ? 'No vocabulary entries for this book.' : 'Add some vocabulary to get started.'}
             </p>
@@ -264,7 +264,7 @@ export function Review() {
           <Button variant="outline" onClick={() => setViewMode('list')}>
             ← Back to List
           </Button>
-          <h2 className="text-2xl font-semibold">Vocabulary Flashcards</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">Vocabulary Flashcards</h2>
         </div>
         <div className="text-sm text-gray-500">{progress}</div>
       </div>
@@ -313,7 +313,7 @@ export function Review() {
         </CardHeader>
         <CardContent>
           <div className="text-center">
-            <h3 className="text-3xl font-bold mb-6">{currentEntry.word}</h3>
+            <h3 className="text-3xl font-bold mb-6 text-gray-900">{currentEntry.word}</h3>
             
             {!showAnswer ? (
               <Button onClick={() => setShowAnswer(true)} size="lg">

@@ -3,6 +3,7 @@ import axios from 'axios'
 import { useEffect, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
+import { Input } from '../components/ui/input'
 import { getFirstDefinition } from '../services/dictionary'
 
 export function BookDetail() {
@@ -68,8 +69,8 @@ export function BookDetail() {
     }
   }
 
-  if (error) return <div className="text-red-600">{error}</div>
-  if (!data) return <div>Loading…</div>
+  if (error) return <div className="text-red-600 bg-white p-4 rounded">{error}</div>
+  if (!data) return <div className="text-gray-900 bg-white p-4 rounded">Loading…</div>
 
   // Handle unauthenticated redirect (HTML) or unexpected payloads gracefully
   if (!data.book) {
@@ -120,15 +121,14 @@ export function BookDetail() {
         </div>
       </div>
       <div>
-        <h3 className="mb-2 font-medium">Add Vocabulary</h3>
+        <h3 className="mb-2 font-medium text-gray-900">Add Vocabulary</h3>
         <form className="space-y-2" onSubmit={add}>
           <div>
-            <input 
+            <Input 
               value={word}
               onChange={e => setWord(e.target.value)}
               placeholder="Word" 
               required 
-              className="w-full border rounded px-3 py-2" 
             />
             {loadingDefinition && (
               <div className="text-xs text-gray-500 mt-1">Fetching definition...</div>
@@ -138,13 +138,15 @@ export function BookDetail() {
             value={definition}
             onChange={e => setDefinition(e.target.value)}
             placeholder="Definition (auto-filled from dictionary)" 
-            className="w-full border rounded px-3 py-2" 
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 bg-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50" 
+            rows={3}
           />
           <textarea 
             value={quote}
             onChange={e => setQuote(e.target.value)}
             placeholder="Quote (optional)" 
-            className="w-full border rounded px-3 py-2" 
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 bg-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50" 
+            rows={2}
           />
           <Button type="submit" disabled={saving}>{saving ? 'Adding…' : 'Add'}</Button>
         </form>
