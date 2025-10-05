@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { App } from './pages/App'
 import { Books } from './pages/Books'
 import { BookDetail } from './pages/BookDetail'
@@ -10,6 +11,9 @@ import { Search } from './pages/Search'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { MyLibrary } from './pages/MyLibrary'
+import { Review } from './pages/Review'
+import { Compendium } from './pages/Compendium'
+import { ImportGoodreads } from './pages/ImportGoodreads'
 
 const router = createBrowserRouter([
   {
@@ -24,13 +28,18 @@ const router = createBrowserRouter([
       { path: 'login', element: <Login /> },
       { path: 'register', element: <Register /> },
       { path: 'my', element: <MyLibrary /> },
+      { path: 'review', element: <Review /> },
+      { path: 'vocab/book/:id', element: <Compendium /> },
+      { path: 'import/goodreads', element: <ImportGoodreads /> },
     ],
   },
 ])
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
   </React.StrictMode>
 )
 

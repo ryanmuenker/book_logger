@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Card, CardContent } from '../components/ui/card'
+import { Loading } from '../components/ui/loading'
+import { Error } from '../components/ui/error'
 import { Link } from 'react-router-dom'
 
 export function MyLibrary() {
   const [items, setItems] = useState<any[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let mounted = true
+  function loadLibrary() {
+    setError(null)
     axios.get('/api/my.json')
-      .then(r => { if (mounted) setItems(r.data) })
-      .catch(() => { if (mounted) setError('Failed to load') })
-    return () => { mounted = false }
+      .then(r => setItems(r.data))
+      .catch(() => setError('Failed to load library'))
+  }
+
+  useEffect(() => {
+    loadLibrary()
   }, [])
 
-  if (error) return <div className="text-red-600">{error}</div>
-  if (!items) return <div>Loading…</div>
+  if (error) return <Error error={error} onRetry={loadLibrary} />
+  if (!items) return <Loading text="Loading library..." />
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -32,13 +37,13 @@ export function MyLibrary() {
               />
             )}
             <div className="font-medium"><Link to={`/books/${it.book.id}`}>{it.book.title}</Link></div>
-            <div className="text-sm text-muted-foreground">{it.book.author}</div>
+            <div className="text-sm text-gray-500">{it.book.author}</div>
             <div className="text-xs mt-1">Status: {it.status || '-'}</div>
             <div className="text-xs">Rating: {it.rating ?? '-'}</div>
           </CardContent>
         </Card>
       ))}
-      {!items.length && <div className="text-muted-foreground">No books yet.</div>}
+      {!items.length && <div className="text-gray-500">No books yet.</div>}
     </div>
   )
 }

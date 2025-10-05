@@ -64,7 +64,7 @@ def create_entry():
         definition=definition,
         quote=quote,
         srs_box=1,
-        next_review_at=_default_next_review(1),
+        next_review_at=None,  # New entries appear immediately in review queue
     )
     db.session.add(entry)
     db.session.commit()
@@ -102,16 +102,70 @@ def delete_entry(entry_id: int):
 @bp.route('/review/queue')
 @login_required
 def review_queue():
-    now = datetime.utcnow()
-    queue = (
+    book_id = request.args.get('book_id', type=int)
+    
+    # Build query - show ALL vocabulary entries for review
+    query = (
         VocabEntry.query
         .filter(VocabEntry.user_id == current_user.id)
-        .filter((VocabEntry.next_review_at == None) | (VocabEntry.next_review_at <= now))
+    )
+    
+    # Filter by book if specified
+    if book_id:
+        query = query.filter(VocabEntry.book_id == book_id)
+    
+    queue = (
+        query
         .order_by(VocabEntry.srs_box.asc(), VocabEntry.word.asc())
-        .limit(50)
+        .limit(100)  # Increased limit
         .all()
     )
+    if request.args.get('format') == 'json':
+        # Get book titles for context
+        book_ids = {e.book_id for e in queue}
+        books = {}
+        if book_ids:
+            from models import Book
+            book_records = Book.query.filter(Book.id.in_(book_ids)).all()
+            books = {b.id: {"title": b.title, "author": b.author} for b in book_records}
+        
+        return jsonify({
+            "entries": [
+                {
+                    "id": e.id,
+                    "word": e.word,
+                    "definition": e.definition,
+                    "quote": e.quote,
+                    "srs_box": e.srs_box,
+                    "book_id": e.book_id,
+                    "book_title": books.get(e.book_id, {}).get("title", f"Book #{e.book_id}"),
+                    "book_author": books.get(e.book_id, {}).get("author", ""),
+                }
+                for e in queue
+            ]
+        })
     return render_template('review.html', entries=queue, title='Flashcard Review')
+
+
+@bp.route('/review/books')
+@login_required
+def review_books():
+    """Get books that have vocabulary entries for review filtering"""
+    from models import Book
+    books = (
+        db.session.query(Book)
+        .join(VocabEntry, Book.id == VocabEntry.book_id)
+        .filter(VocabEntry.user_id == current_user.id)
+        .distinct()
+        .order_by(Book.title)
+        .all()
+    )
+    return jsonify({
+        "books": [
+            {"id": b.id, "title": b.title, "author": b.author}
+            for b in books
+        ]
+    })
 
 
 @bp.route('/review/<int:entry_id>/answer', methods=['POST'])

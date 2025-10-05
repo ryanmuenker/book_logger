@@ -1,6 +1,7 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import { Button } from '../components/ui/button'
 
 export function App() {
   const [user, setUser] = useState<{id:number,email:string}|null>(null)
@@ -23,12 +24,14 @@ export function App() {
           <nav className="flex gap-4 text-sm items-center">
             <Link to="/search" className="underline">Search</Link>
             {user && <Link to="/my" className="underline">My Library</Link>}
+            {user && <Link to="/review" className="underline">Review</Link>}
+            {user && <Link to="/import/goodreads" className="underline">Import</Link>}
             <a href="/export.json" className="underline">Export JSON</a>
             <a href="/export.csv" className="underline">Export CSV</a>
             {user ? (
               <>
-                <span className="text-xs text-muted-foreground">{user.email}</span>
-                <button onClick={logout} className="border rounded px-2 py-1">Logout</button>
+                <span className="text-xs text-gray-500">{user.email}</span>
+                <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
               </>
             ) : (
               <>

@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { useNavigate, Link } from 'react-router-dom'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
 export function Login() {
   const [email, setEmail] = useState('')
@@ -20,16 +23,20 @@ export function Login() {
   }
 
   return (
-    <div className="max-w-sm">
-      <h2 className="text-xl font-semibold mb-4">Login</h2>
-      {error && <div className="text-red-600 mb-2">{error}</div>}
-      <form className="space-y-3" onSubmit={submit}>
-        <input className="w-full border rounded px-3 py-2" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-        <input className="w-full border rounded px-3 py-2" placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-        <button className="border rounded px-3 py-2" type="submit">Login</button>
-      </form>
-      <div className="text-sm mt-2">No account? <Link className="underline" to="/register">Register</Link></div>
-    </div>
+    <Card className="max-w-sm mx-auto">
+      <CardHeader>
+        <CardTitle>Login</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {error && <div className="text-red-600 mb-4">{error}</div>}
+        <form className="space-y-4" onSubmit={submit}>
+          <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+          <Input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+          <Button className="w-full" type="submit">Login</Button>
+        </form>
+        <div className="text-sm mt-4 text-center">No account? <Link className="underline" to="/register">Register</Link></div>
+      </CardContent>
+    </Card>
   )
 }
 
