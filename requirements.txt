@@ -10,5 +10,9 @@ python-dotenv==1.0.1
 # HTTP requests for external APIs
 requests==2.32.3
 
+# Testing and coverage
+pytest==8.3.2
+pytest-cov==5.0.0
+
 # Additional dependencies for production deployment
 # gunicorn==21.2.0  # Uncomment for production deployment
