@@ -154,11 +154,11 @@ def books_new():
             db.session.add(link)
         else:
             # Update existing link
-            link.start_date = request.form.get("start_date") or link.start_date
-            link.finish_date = request.form.get("finish_date") or link.finish_date
-            link.rating = (int(request.form.get("rating")) if request.form.get("rating") else link.rating)
-            link.tags = request.form.get("tags") or link.tags or ""
-            link.notes = request.form.get("notes") or link.notes or ""
+            link.start_date = request.form.get("start_date") or None
+            link.finish_date = request.form.get("finish_date") or None
+            link.rating = (int(request.form.get("rating")) if request.form.get("rating") else None)
+            link.tags = request.form.get("tags") or ""
+            link.notes = request.form.get("notes") or ""
         
         db.session.commit()
         flash("Book added to your library.")
