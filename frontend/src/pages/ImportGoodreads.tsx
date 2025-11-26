@@ -31,6 +31,7 @@ export function ImportGoodreads() {
 
   function parseGoodreadsCSV(csvText: string): GoodreadsBook[] {
     const lines = csvText.split('\n')
+    if (!lines[0]) return []
     const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim())
     
     // Find column indices
@@ -46,7 +47,7 @@ export function ImportGoodreads() {
     const books: GoodreadsBook[] = []
     
     for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim()
+      const line = lines[i]?.trim()
       if (!line) continue
       
       // Simple CSV parsing (handles quoted fields)
@@ -135,8 +136,10 @@ export function ImportGoodreads() {
     if (!preview) return
     
     const updatedBooks = [...preview.books]
-    updatedBooks[index].isbn = isbn
-    setPreview({ ...preview, books: updatedBooks })
+    if (updatedBooks[index]) {
+      updatedBooks[index].isbn = isbn
+      setPreview({ ...preview, books: updatedBooks })
+    }
   }
 
   function saveIsbn(index: number) {

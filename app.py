@@ -1,9 +1,15 @@
 
 from flask import Flask, render_template
 from flask_login import LoginManager
+from prometheus_flask_exporter import PrometheusMetrics
 
 app = Flask(__name__)
 app.config.from_object('config')
+
+# Initialize Prometheus metrics
+metrics = PrometheusMetrics(app)
+# Expose default metrics (request count, latency, errors)
+metrics.info('app_info', 'Book Logger Application', version='1.0.0')
 
 # Initialize db and models
 from models import db, User, VocabEntry
@@ -12,7 +18,12 @@ db.init_app(app)
 
 with app.app_context():
     from models import Book
-    db.create_all()
+    try:
+        db.create_all()
+    except Exception as e:
+        # Tables might already exist, which is fine
+        if 'already exists' not in str(e).lower():
+            raise
     # lightweight migration: ensure 'isbn' column exists on 'book'
     try:
         result = db.session.execute(text("PRAGMA table_info(book)"))
@@ -47,7 +58,10 @@ def load_user(user_id):
 
 @app.route("/health")
 def health():
+    """Health check endpoint for monitoring"""
     return {"status": "ok"}
+
+# Metrics endpoint is automatically available at /metrics
 
 if __name__ == "__main__":
     app.run(debug=True)

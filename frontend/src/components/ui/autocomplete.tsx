@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { cn } from '../../lib/cn'
+import { cn } from '../../lib/utils'
 
-export interface AutocompleteProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface AutocompleteProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onSelect'> {
   suggestions: string[]
   onSelect?: (value: string) => void
 }
@@ -52,7 +52,8 @@ export const Autocomplete = React.forwardRef<HTMLInputElement, AutocompleteProps
         case 'Enter':
           e.preventDefault()
           if (selectedIndex >= 0 && selectedIndex < filteredSuggestions.length) {
-            selectSuggestion(filteredSuggestions[selectedIndex])
+            const selected = filteredSuggestions[selectedIndex]
+            if (selected) selectSuggestion(selected)
           }
           break
         case 'Escape':

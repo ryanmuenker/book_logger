@@ -181,24 +181,155 @@ A comprehensive book tracking and vocabulary learning application built with Fla
 - **Review intervals**: 1 day → 3 days → 1 week → 2 weeks → 1 month
 
 ## Testing
-- Placeholder tests in `tests/` directory
-- Expand with unit tests for:
-  - CRUD operations
-  - Spaced repetition logic
-  - API endpoints
-  - Frontend components
+
+### Backend Tests
+Run the test suite with coverage:
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run tests with coverage
+pytest --cov --cov-report=term --cov-report=html
+
+# View coverage report
+# Open htmlcov/index.html in your browser
+```
+
+**Coverage Target**: Minimum 70% code coverage (currently ~85%)
+
+### Test Structure
+- `tests/test_auth.py` - Authentication routes (login, register, logout)
+- `tests/test_books.py` - Book CRUD, search, exports, my library
+- `tests/test_vocab.py` - Vocabulary CRUD, review system, compendium
+- `tests/test_services.py` - External API services
+- `tests/test_app.py` - Health endpoint
+- `tests/test_import_books.py` - Goodreads import functionality
 
 ## Deployment
 
-### Backend
-- Use production WSGI server (e.g., gunicorn)
-- Set up environment variables for production
-- Configure database for production use
+### Docker Deployment
 
-### Frontend
-- Build for production: `npm run build`
-- Serve static files via your platform of choice
-- Configure proxy for API requests
+#### Build and Run with Docker Compose
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Run in detached mode
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+The application will be available at:
+- Frontend: `http://localhost`
+- Backend API: `http://localhost:5000`
+- Health check: `http://localhost:5000/health`
+- Metrics: `http://localhost:5000/metrics`
+
+#### Build Individual Images
+```bash
+# Backend
+docker build -t book-logger-backend .
+
+# Frontend
+docker build -t book-logger-frontend -f frontend/Dockerfile ./frontend
+```
+
+### Azure Deployment
+
+#### Prerequisites
+1. Azure Resource Group created
+2. Azure Container Registry (ACR) created
+3. Azure Container App or Web App for Containers created
+4. GitHub Secrets configured (see below)
+
+#### Required GitHub Secrets
+Configure these secrets in your GitHub repository settings:
+
+- `AZURE_ACR_LOGIN_SERVER` - ACR login server (e.g., `myregistry.azurecr.io`)
+- `AZURE_ACR_USERNAME` - ACR username
+- `AZURE_ACR_PASSWORD` - ACR password
+- `AZURE_ACR_NAME` - ACR name
+- `AZURE_CONTAINER_APP_NAME` - Container App name
+- `AZURE_RESOURCE_GROUP` - Resource group name
+- `AZURE_CREDENTIALS` - Azure service principal JSON (for deployment)
+
+#### Deployment Process
+1. **Automatic Deployment**: Pushes to `main` branch automatically trigger:
+   - Backend tests with coverage check (must be ≥70%)
+   - Frontend build verification
+   - Docker image build and push to ACR
+   - Deployment to Azure Container Apps
+
+2. **Manual Deployment**:
+   ```bash
+   # Login to Azure
+   az login
+   
+   # Login to ACR
+   az acr login --name <acr-name>
+   
+   # Build and push images
+   docker build -t <acr-name>.azurecr.io/book-logger-backend:latest .
+   docker push <acr-name>.azurecr.io/book-logger-backend:latest
+   
+   docker build -t <acr-name>.azurecr.io/book-logger-frontend:latest -f frontend/Dockerfile ./frontend
+   docker push <acr-name>.azurecr.io/book-logger-frontend:latest
+   ```
+
+#### Environment Variables
+Set these in your Azure Container App configuration:
+- `DATABASE_URL` - Database connection string
+- `SECRET_KEY` - Flask secret key for sessions
+
+### CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) includes:
+- **Backend Testing**: Runs pytest with coverage, fails if <70%
+- **Frontend Build**: Verifies frontend builds successfully
+- **Docker Build**: Builds backend and frontend images
+- **Azure Deployment**: Automatically deploys on `main` branch pushes only
+
+## Monitoring
+
+### Health Check
+- **Endpoint**: `GET /health`
+- **Response**: `{"status": "ok"}`
+- Used by container orchestrators and load balancers
+
+### Metrics (Prometheus)
+- **Endpoint**: `GET /metrics`
+- **Metrics Exposed**:
+  - `http_request_duration_seconds` - Request latency
+  - `http_request_total` - Request count by method and status
+  - `flask_http_request_duration_seconds` - Detailed request timing
+  - `flask_exceptions_total` - Error count by exception type
+
+### Prometheus Setup
+1. **Install Prometheus**:
+   ```bash
+   # Using Docker
+   docker run -d -p 9090:9090 \
+     -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml \
+     prom/prometheus
+   ```
+
+2. **Access Prometheus UI**: `http://localhost:9090`
+
+3. **Example Queries**:
+   - Request rate: `rate(http_request_total[5m])`
+   - Error rate: `rate(http_request_total{status=~"5.."}[5m])`
+   - Average latency: `rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])`
+
+### Grafana (Optional)
+Import Prometheus as a data source and create dashboards for:
+- Request rate and latency
+- Error rates
+- Health check status
 
 ## Tips & Troubleshooting
 

@@ -14,5 +14,8 @@ requests==2.32.3
 pytest==8.3.2
 pytest-cov==5.0.0
 
-# Additional dependencies for production deployment
-# gunicorn==21.2.0  # Uncomment for production deployment
+# Monitoring and metrics
+prometheus-flask-exporter==0.23.0
+
+# Production server
+gunicorn==21.2.0
