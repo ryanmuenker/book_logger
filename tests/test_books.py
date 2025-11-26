@@ -12,19 +12,35 @@ def create_book(app, **kwargs):
         return book.id
 
 
-def test_books_list_renders_books(client, app):
-    book_id = create_book(app, title="Book One")
-    resp = client.get("/books")
+def test_books_list_renders_books(auth_client, app):
+    """Test that books list shows user's books when logged in"""
+    with app.app_context():
+        from models import User
+        # Get the user that was registered by auth_client
+        user = User.query.filter_by(email="tester@example.com").first()
+        assert user is not None
+        # Create book and link it to the authenticated user
+        book = Book(title="Book One", author="Author One")
+        db.session.add(book)
+        db.session.flush()
+        book_id = book.id
+        # Create UserBook link
+        link = UserBook(user_id=user.id, book_id=book_id, status='reading')
+        db.session.add(link)
+        db.session.commit()
+    
+    resp = auth_client.get("/books")
     assert resp.status_code == 200
     assert "Book One" in resp.get_data(as_text=True)
-    detail_resp = client.get(f"/books/{book_id}")
+    detail_resp = auth_client.get(f"/books/{book_id}")
     assert detail_resp.status_code == 200
     assert "Book One" in detail_resp.get_data(as_text=True)
 
 
-def test_books_create_edit_delete_flow(client, app):
+def test_books_create_edit_delete_flow(auth_client, app):
+    """Test book CRUD operations require authentication"""
     # Create
-    create_resp = client.post(
+    create_resp = auth_client.post(
         "/books/new",
         data={
             "title": "New Book",
@@ -37,12 +53,20 @@ def test_books_create_edit_delete_flow(client, app):
     assert create_resp.status_code == 200
 
     with app.app_context():
+        from models import User
+        # Get the user that was registered by auth_client
+        user = User.query.filter_by(email="tester@example.com").first()
+        assert user is not None
+        # Find book and UserBook link
         book = Book.query.filter_by(title="New Book").first()
         assert book is not None
         book_id = book.id
+        # Verify UserBook link exists
+        link = UserBook.query.filter_by(user_id=user.id, book_id=book_id).first()
+        assert link is not None
 
     # Edit
-    edit_resp = client.post(
+    edit_resp = auth_client.post(
         f"/books/{book_id}/edit",
         data={"title": "Updated", "author": "Updated Author"},
         follow_redirects=True,
@@ -52,11 +76,15 @@ def test_books_create_edit_delete_flow(client, app):
         refreshed = Book.query.get(book_id)
         assert refreshed.title == "Updated"
 
-    # Delete
-    delete_resp = client.post(f"/books/{book_id}/delete", follow_redirects=True)
+    # Delete (removes UserBook link, may or may not delete Book)
+    delete_resp = auth_client.post(f"/books/{book_id}/delete", follow_redirects=True)
     assert delete_resp.status_code == 200
     with app.app_context():
-        assert Book.query.get(book_id) is None
+        from models import User
+        user = User.query.filter_by(email="tester@example.com").first()
+        # Verify UserBook link is removed
+        link = UserBook.query.filter_by(user_id=user.id, book_id=book_id).first()
+        assert link is None
 
 
 def test_my_library_requires_login(client):
