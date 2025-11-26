@@ -19,7 +19,7 @@ export function Books() {
   function loadBooks() {
     setLoading(true)
     setError(null)
-    axios.get('/export.json')
+    axios.get('/api/books.json')
       .then(r => setBooks(r.data || []))
       .catch(() => setError('Failed to load books'))
       .finally(() => setLoading(false))
@@ -116,7 +116,18 @@ export function Books() {
             </CardContent>
           </Card>
         ))}
-        {!filtered.length && <div className="text-gray-500">No books match.</div>}
+        {!filtered.length && (
+          <div className="text-center py-8 text-gray-500">
+            {books.length === 0 ? (
+              <div>
+                <p className="text-lg mb-2">No books in your library yet.</p>
+                <p className="text-sm">Add a book to get started!</p>
+              </div>
+            ) : (
+              <div>No books match your search.</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -13,7 +13,19 @@ def home_redirect():
 
 @bp.route("/books")
 def books_list():
-    books = Book.query.order_by(Book.id.desc()).all()
+    """Books list page - shows user-specific books if logged in"""
+    if current_user.is_authenticated:
+        # Get user's books through UserBook relationship
+        links = (
+            db.session.query(UserBook, Book)
+            .join(Book, UserBook.book_id == Book.id)
+            .filter(UserBook.user_id == current_user.id)
+            .order_by(UserBook.id.desc())
+            .all()
+        )
+        books = [book for _, book in links]
+    else:
+        books = []
     all_tags = sorted({t.strip() for b in books for t in (b.tags or '').split(',') if t.strip()})
     return render_template("books_list.html", books=books, all_tags=all_tags, title="Library")
 
@@ -35,7 +47,20 @@ def search_page():
 @bp.route('/books/<int:book_id>')
 def book_detail(book_id):
     b = Book.query.get_or_404(book_id)
-    return render_template('book_detail.html', book=b, title=b.title)
+    # If user is logged in, check if they own this book and get their specific data
+    user_data = None
+    if current_user.is_authenticated:
+        link = UserBook.query.filter_by(user_id=current_user.id, book_id=book_id).first()
+        if link:
+            user_data = {
+                'status': link.status,
+                'rating': link.rating,
+                'start_date': link.start_date,
+                'finish_date': link.finish_date,
+                'tags': link.tags,
+                'notes': link.notes,
+            }
+    return render_template('book_detail.html', book=b, user_data=user_data, title=b.title)
 
 
 @bp.route('/api/add_to_library', methods=['POST'])
@@ -89,6 +114,7 @@ def my_library():
     return render_template('my_library.html', items=items, title='My Library')
 
 @bp.route("/books/new", methods=["GET", "POST"])
+@login_required
 def books_new():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -96,48 +122,150 @@ def books_new():
         if not title or not author:
             flash("Title and Author are required.")
             return render_template("book_form.html", book=None, title="Add Book")
-        b = Book(
-            title=title,
-            author=author,
-            start_date=request.form.get("start_date") or None,
-            finish_date=request.form.get("finish_date") or None,
-            rating=(int(request.form.get("rating")) if request.form.get("rating") else None),
-            tags=request.form.get("tags") or "",
-            notes=request.form.get("notes") or ""
-        )
-        db.session.add(b)
+        
+        # Find or create Book
+        book = Book.query.filter_by(title=title, author=author).first()
+        if not book:
+            book = Book(
+                title=title,
+                author=author,
+                start_date=request.form.get("start_date") or None,
+                finish_date=request.form.get("finish_date") or None,
+                rating=(int(request.form.get("rating")) if request.form.get("rating") else None),
+                tags=request.form.get("tags") or "",
+                notes=request.form.get("notes") or ""
+            )
+            db.session.add(book)
+            db.session.flush()  # Get book.id
+        
+        # Create UserBook link
+        link = UserBook.query.filter_by(user_id=current_user.id, book_id=book.id).first()
+        if not link:
+            link = UserBook(
+                user_id=current_user.id,
+                book_id=book.id,
+                status='reading',
+                start_date=request.form.get("start_date") or None,
+                finish_date=request.form.get("finish_date") or None,
+                rating=(int(request.form.get("rating")) if request.form.get("rating") else None),
+                tags=request.form.get("tags") or "",
+                notes=request.form.get("notes") or ""
+            )
+            db.session.add(link)
+        else:
+            # Update existing link
+            link.start_date = request.form.get("start_date") or link.start_date
+            link.finish_date = request.form.get("finish_date") or link.finish_date
+            link.rating = (int(request.form.get("rating")) if request.form.get("rating") else link.rating)
+            link.tags = request.form.get("tags") or link.tags or ""
+            link.notes = request.form.get("notes") or link.notes or ""
+        
         db.session.commit()
-        flash("Book created.")
+        flash("Book added to your library.")
         return redirect(url_for("books.books_list"))
     return render_template("book_form.html", book=None, title="Add Book")
 
 @bp.route("/books/<int:book_id>/edit", methods=["GET", "POST"])
+@login_required
 def books_edit(book_id):
+    # Check if user owns this book
+    link = UserBook.query.filter_by(user_id=current_user.id, book_id=book_id).first()
+    if not link:
+        flash("You don't have permission to edit this book.")
+        return redirect(url_for("books.books_list"))
+    
     b = Book.query.get_or_404(book_id)
     if request.method == "POST":
-        b.title = request.form.get("title", b.title).strip()
-        b.author = request.form.get("author", b.author).strip()
-        b.start_date = request.form.get("start_date") or None
-        b.finish_date = request.form.get("finish_date") or None
-        b.rating = (int(request.form.get("rating")) if request.form.get("rating") else None)
-        b.tags = request.form.get("tags") or ""
-        b.notes = request.form.get("notes") or ""
+        # Update UserBook (user-specific data)
+        link.start_date = request.form.get("start_date") or None
+        link.finish_date = request.form.get("finish_date") or None
+        link.rating = (int(request.form.get("rating")) if request.form.get("rating") else None)
+        link.tags = request.form.get("tags") or ""
+        link.notes = request.form.get("notes") or ""
+        
+        # Only update Book title/author if no other users have this book
+        other_links = UserBook.query.filter(UserBook.book_id == book_id, UserBook.user_id != current_user.id).count()
+        if other_links == 0:
+            b.title = request.form.get("title", b.title).strip()
+            b.author = request.form.get("author", b.author).strip()
+        
         db.session.commit()
         flash("Book updated.")
         return redirect(url_for("books.books_list"))
-    return render_template("book_form.html", book=b, title=f"Edit: {b.title}")
+    
+    # Create a combined book object for the form
+    form_book = {
+        'id': b.id,
+        'title': b.title,
+        'author': b.author,
+        'start_date': link.start_date or b.start_date,
+        'finish_date': link.finish_date or b.finish_date,
+        'rating': link.rating or b.rating,
+        'tags': link.tags or b.tags or "",
+        'notes': link.notes or b.notes or "",
+    }
+    return render_template("book_form.html", book=form_book, title=f"Edit: {b.title}")
 
 @bp.route("/books/<int:book_id>/delete", methods=["POST"])
+@login_required
 def books_delete(book_id):
-    b = Book.query.get_or_404(book_id)
-    db.session.delete(b)
+    # Check if user owns this book
+    link = UserBook.query.filter_by(user_id=current_user.id, book_id=book_id).first()
+    if not link:
+        flash("You don't have permission to delete this book.")
+        return redirect(url_for("books.books_list"))
+    
+    # Remove the UserBook link (user's association with the book)
+    db.session.delete(link)
+    
+    # Only delete the Book if no other users have it
+    other_links = UserBook.query.filter(UserBook.book_id == book_id, UserBook.user_id != current_user.id).count()
+    if other_links == 0:
+        b = Book.query.get_or_404(book_id)
+        db.session.delete(b)
+    
     db.session.commit()
-    flash("Book deleted.")
+    flash("Book removed from your library.")
     return redirect(url_for("books.books_list"))
+
+
+@bp.route('/api/books.json')
+def api_books_json():
+    """Returns user-specific books if logged in, empty array otherwise"""
+    if not current_user.is_authenticated:
+        return jsonify([])
+    
+    # Get user's books through UserBook relationship
+    links = (
+        db.session.query(UserBook, Book)
+        .join(Book, UserBook.book_id == Book.id)
+        .filter(UserBook.user_id == current_user.id)
+        .order_by(UserBook.id.desc())
+        .all()
+    )
+    
+    payload = []
+    for link, book in links:
+        # Use UserBook data (rating, tags, notes) if available, fallback to Book data
+        payload.append({
+            'id': book.id,
+            'title': book.title,
+            'author': book.author,
+            'isbn': book.isbn,
+            'cover_id': book.cover_id,
+            'start_date': link.start_date or book.start_date,
+            'finish_date': link.finish_date or book.finish_date,
+            'rating': link.rating or book.rating,
+            'tags': link.tags or book.tags or '',
+            'notes': link.notes or book.notes or '',
+            'status': link.status,
+        })
+    return jsonify(payload)
 
 
 @bp.route('/export.json')
 def export_json():
+    """Legacy endpoint - returns all books (for admin/export purposes)"""
     books = Book.query.order_by(Book.id.asc()).all()
     payload = []
     for b in books:
