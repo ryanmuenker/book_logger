@@ -14,6 +14,16 @@ export default defineConfig({
       '/export.json': 'http://127.0.0.1:5000',
     },
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.ts',
+    globals: true,
+    pool: 'vm',
+    include: [
+      'src/components/**/*.test.tsx',
+      'src/services/**/*.test.ts',
+    ],
+  },
 })
 
 

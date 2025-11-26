@@ -76,9 +76,10 @@ export async function getFirstDefinition(word: string): Promise<string | null> {
     if (!result || !result.meanings.length) return null
     
     const firstMeaning = result.meanings[0]
-    if (!firstMeaning.definitions.length) return null
+    if (!firstMeaning || !firstMeaning.definitions.length) return null
     
-    return firstMeaning.definitions[0].definition
+    const firstDef = firstMeaning.definitions[0]
+    return firstDef?.definition || null
   } catch (error) {
     clearTimeout(timeoutId)
     console.warn('Dictionary API timeout or error:', error)

@@ -16,7 +16,11 @@ export function Loading({ className, size = 'md', text = 'Loading...' }: Loading
   return (
     <div className={cn('flex items-center justify-center py-8', className)}>
       <div className="flex items-center gap-2">
-        <div className={cn('animate-spin rounded-full border-2 border-gray-300 border-t-blue-600', sizeClasses[size])} />
+        <div
+          role="status"
+          aria-live="polite"
+          className={cn('animate-spin rounded-full border-2 border-gray-300 border-t-blue-600', sizeClasses[size])}
+        />
         <span className="text-sm text-gray-500">{text}</span>
       </div>
     </div>

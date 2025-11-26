@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from '../../lib/cn'
+import { cn } from '../../lib/utils'
 
 export interface DateInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   placeholder?: string
@@ -24,7 +24,7 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
       if (formatted.length >= 7 && formatted.split('-').length === 2) {
         // Add second dash after month
         const parts = formatted.split('-')
-        if (parts[1].length >= 2) {
+        if (parts[1] && parts[1].length >= 2) {
           formatted = parts[0] + '-' + parts[1].slice(0, 2) + '-' + parts[1].slice(2)
         }
       }
