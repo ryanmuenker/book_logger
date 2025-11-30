@@ -99,15 +99,21 @@ jobs:
         run: |
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
+      - name: Configure backend registry credentials
+        run: |
+          az containerapp registry add \
+            --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --server ${{ secrets.AZURE_ACR_LOGIN_SERVER }} \
+            --username ${{ secrets.AZURE_ACR_USERNAME }} \
+            --password ${{ secrets.AZURE_ACR_PASSWORD }} || true
+          
       - name: Deploy backend to Azure Container Apps
         run: |
           az containerapp update \
             --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --image ${{ secrets.AZURE_ACR_LOGIN_SERVER }}/book-logger-backend:${{ github.sha }} \
-            --registry-server ${{ secrets.AZURE_ACR_LOGIN_SERVER }} \
-            --registry-username ${{ secrets.AZURE_ACR_USERNAME }} \
-            --registry-password ${{ secrets.AZURE_ACR_PASSWORD }}
+            --image ${{ secrets.AZURE_ACR_LOGIN_SERVER }}/book-logger-backend:${{ github.sha }}
 
       - name: Deploy or create frontend Container App
         run: |
@@ -117,15 +123,21 @@ jobs:
           # Check if frontend Container App exists
           if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} &>/dev/null; then
             echo "Frontend Container App exists, updating..."
+            # Configure registry credentials if needed
+            az containerapp registry add \
+              --name "$FRONTEND_APP_NAME" \
+              --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+              --server ${{ secrets.AZURE_ACR_LOGIN_SERVER }} \
+              --username ${{ secrets.AZURE_ACR_USERNAME }} \
+              --password ${{ secrets.AZURE_ACR_PASSWORD }} || true
+            # Update the image
             az containerapp update \
               --name "$FRONTEND_APP_NAME" \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-              --image ${{ secrets.AZURE_ACR_LOGIN_SERVER }}/book-logger-frontend:${{ github.sha }} \
-              --registry-server ${{ secrets.AZURE_ACR_LOGIN_SERVER }} \
-              --registry-username ${{ secrets.AZURE_ACR_USERNAME }} \
-              --registry-password ${{ secrets.AZURE_ACR_PASSWORD }}
+              --image ${{ secrets.AZURE_ACR_LOGIN_SERVER }}/book-logger-frontend:${{ github.sha }}
           else
             echo "Frontend Container App does not exist, creating..."
+            # Create the Container App first
             az containerapp create \
               --name "$FRONTEND_APP_NAME" \
               --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
