@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Books</h1>
+    {% for book in books %}
+      <div class="book">
+        <span class="title">{{ book.title }}</span>
+        <span class="author">{{ book.author }}</span>
+      </div>
+    {% endfor %}
+  </body>
+</html>
+

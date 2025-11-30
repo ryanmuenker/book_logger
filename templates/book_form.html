@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>{{ title or "Book Form" }}</h1>
+    <form method="post">
+      <input type="text" name="title" value="{{ book.title if book else '' }}" />
+      <input type="text" name="author" value="{{ book.author if book else '' }}" />
+      <button type="submit">Save</button>
+    </form>
+  </body>
+</html>
+
