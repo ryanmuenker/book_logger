@@ -4,18 +4,21 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { useAuth } from '../contexts/AuthContext'
 
 export function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
+  const { refreshUser } = useAuth()
 
   async function submit(ev: React.FormEvent) {
     ev.preventDefault()
     setError(null)
     try {
       await axios.post('/auth/register', { email, password })
+      await refreshUser()
       navigate('/')
     } catch (e: any) {
       setError('Failed to register')

@@ -1,19 +1,15 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Button } from '../components/ui/button'
+import { useAuth } from '../contexts/AuthContext'
 
 export function App() {
-  const [user, setUser] = useState<{id:number,email:string}|null>(null)
+  const { user, refreshUser } = useAuth()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    axios.get('/auth/me').then(r => setUser(r.data.user)).catch(() => setUser(null))
-  }, [])
 
   async function logout() {
     await axios.post('/auth/logout')
-    setUser(null)
+    await refreshUser()
     navigate('/login')
   }
   return (
