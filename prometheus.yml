@@ -3,8 +3,15 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'book-logger'
+  - job_name: 'book-logger-azure'
     static_configs:
-      - targets: ['localhost:5000']
+      - targets: ['book-logger-backend.greendune-dcdd87fc.westeurope.azurecontainerapps.io:443']
+    metrics_path: '/metrics'
+    scheme: 'https'
+  
+  # Local development target (when running locally)
+  - job_name: 'book-logger-local'
+    static_configs:
+      - targets: ['host.docker.internal:5001']
     metrics_path: '/metrics'
 
