@@ -259,27 +259,11 @@ Configure these secrets in your GitHub repository settings:
 - `AZURE_CREDENTIALS` - Azure service principal JSON (for deployment)
 
 #### Deployment Process
-1. **Automatic Deployment**: Pushes to `main` branch automatically trigger:
+1. **Automatic Deployment via GitHub Actions**: Pushes to `main` branch automatically trigger:
    - Backend tests with coverage check (must be ≥70%)
    - Frontend build verification
    - Docker image build and push to ACR
-   - Deployment to Azure Container Apps
-
-#### Azure DevOps Pipeline (Optional/Enterprise)
-Use `azure-pipelines.yml` if your team prefers Azure DevOps over GitHub Actions:
-
-1. **Create Service Connection**: Grant the pipeline access to the target subscription, ACR, and Container Apps (recommended name: `book-logger-sp`).
-2. **Add Pipeline Variables/Secrets**:
-   - `ACR_NAME`, `ACR_LOGIN_SERVER`
-   - `ACR_USERNAME`, `ACR_PASSWORD` (or enable managed identity and leave blank)
-   - `AZURE_CONTAINER_APP_NAME`, `AZURE_RESOURCE_GROUP`
-   - `AZURE_SERVICE_CONNECTION` (matches the service connection name)
-3. **Pipeline Stages**:
-   - `BuildAndTest`: Runs backend pytest with `--cov-fail-under=70`, publishes coverage + JUnit report, and builds the frontend with Node 18.
-   - `ContainerizeAndDeploy`: Builds/pushes backend & frontend Docker images to ACR and updates the Azure Container App image (only when `main` succeeds).
-4. **Branch Policies**: Protect `main` so only successful Azure DevOps runs can merge/deploy.
-
-> Tip: Keep both GitHub Actions and Azure Pipelines enabled until your team fully migrates so you always have a known-good deployment path.
+   - Deployment to Azure Container Apps (both backend and frontend)
 
 2. **Manual Deployment**:
    ```bash

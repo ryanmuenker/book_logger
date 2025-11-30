@@ -9,11 +9,12 @@ bp = Blueprint('books', __name__)
 
 @bp.route("/")
 def home_redirect():
-    return redirect(url_for('books.books_list'))
+    """Redirect to API endpoint - React frontend handles the UI"""
+    return jsonify({"message": "Book Logger API - Use React frontend", "api_docs": "/api/books.json"})
 
 @bp.route("/books")
 def books_list():
-    """Books list page - shows user-specific books if logged in"""
+    """Books list - returns JSON (React frontend handles rendering)"""
     if current_user.is_authenticated:
         # Get user's books through UserBook relationship
         links = (
@@ -27,7 +28,7 @@ def books_list():
     else:
         books = []
     all_tags = sorted({t.strip() for b in books for t in (b.tags or '').split(',') if t.strip()})
-    return render_template("books_list.html", books=books, all_tags=all_tags, title="Library")
+    return jsonify({"books": [{"id": b.id, "title": b.title, "author": b.author, "isbn": b.isbn, "cover_id": b.cover_id, "tags": b.tags} for b in books], "all_tags": all_tags})
 
 
 @bp.route("/api/search")
@@ -41,7 +42,8 @@ def api_search():
 
 @bp.route("/search")
 def search_page():
-    return render_template("search.html", title="Search Books")
+    """Search page - returns JSON (React frontend handles rendering)"""
+    return jsonify({"message": "Use /api/search?q=... for search functionality"})
 
 
 @bp.route('/books/<int:book_id>')
@@ -60,7 +62,15 @@ def book_detail(book_id):
                 'tags': link.tags,
                 'notes': link.notes,
             }
-    return render_template('book_detail.html', book=b, user_data=user_data, title=b.title)
+    # Return JSON instead of template (React frontend handles UI)
+    return jsonify({
+        "id": b.id,
+        "title": b.title,
+        "author": b.author,
+        "isbn": b.isbn,
+        "cover_id": b.cover_id,
+        "user_data": user_data
+    })
 
 
 @bp.route('/api/add_to_library', methods=['POST'])
@@ -97,21 +107,8 @@ def add_to_library():
 @bp.route('/my')
 @login_required
 def my_library():
-    links = (
-        db.session.query(UserBook, Book)
-        .join(Book, UserBook.book_id == Book.id)
-        .filter(UserBook.user_id == current_user.id)
-        .order_by(UserBook.id.desc())
-        .all()
-    )
-    items = []
-    for link, book in links:
-        items.append({
-            'book': book,
-            'status': link.status,
-            'rating': link.rating,
-        })
-    return render_template('my_library.html', items=items, title='My Library')
+    # Use the same logic as /api/my.json endpoint
+    return redirect(url_for('books.my_json'))
 
 @bp.route("/books/new", methods=["GET", "POST"])
 @login_required

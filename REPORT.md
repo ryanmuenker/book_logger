@@ -99,20 +99,6 @@ This report documents the improvements made to the Book Logger application for A
 - **Artifact Storage**: Coverage reports saved for analysis
 - **Parallel Execution**: Backend and frontend jobs run in parallel where possible
 
-### Azure DevOps Pipeline
-
-**Location**: `azure-pipelines.yml`
-
-#### Highlights
-- **Service Connection Friendly**: Uses an Azure service connection for ACR push + Container Apps deployment.
-- **Backend Quality Gate**: `pytest --cov-fail-under=70` with Cobertura + JUnit publishing to the Azure DevOps Test tab.
-- **Frontend Assurance**: Node 18 build verification mirrors the production Vite build.
-- **Containerization Stage**: Builds/pushes backend and frontend images to ACR and only deploys when `main` succeeds.
-- **Configurable Secrets**: Pipeline variables for `ACR_*`, `AZURE_*`, and service connection names keep sensitive data out of the repo.
-- **Branch Awareness**: Deployment stage guarded with `condition` so only `refs/heads/main` pushes roll out automatically.
-
-This provides parity with GitHub Actions while meeting the assignment’s “DevOps pipeline with Azure” requirement.
-
 ## 4. Deployment Automation (CD)
 
 ### Containerization
