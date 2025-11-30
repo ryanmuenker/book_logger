@@ -1,0 +1,145 @@
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  pythonVersion: '3.11'
+  nodeVersion: '18'
+  # The following variables should be defined in the pipeline UI or variable groups:
+  # AZURE_SERVICE_CONNECTION - Azure service connection name with Container Apps + ACR access
+  # ACR_NAME - Azure Container Registry name (without domain)
+  # ACR_LOGIN_SERVER - Full ACR login server (example.azurecr.io)
+  # ACR_USERNAME - ACR username (if required)
+  # ACR_PASSWORD - ACR password (if required)
+  # AZURE_CONTAINER_APP_NAME - Target Container App resource
+  # AZURE_RESOURCE_GROUP - Resource group containing the Container App
+
+stages:
+  - stage: BuildAndTest
+    displayName: Backend & Frontend Verification
+    jobs:
+      - job: Backend
+        displayName: Backend Tests + Coverage
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: $(pythonVersion)
+              addToPath: true
+
+          - script: |
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+            displayName: Install Python dependencies
+
+          - script: |
+              pytest --cov=./ --cov-report=term --cov-report=xml --cov-fail-under=70 --junitxml=test-results.xml
+            displayName: Run pytest with coverage threshold
+
+          - task: PublishTestResults@2
+            displayName: Publish pytest results
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: test-results.xml
+              failTaskOnFailedTests: true
+
+          - task: PublishCodeCoverageResults@2
+            displayName: Publish coverage report
+            inputs:
+              codeCoverageTool: Cobertura
+              summaryFileLocation: coverage.xml
+              reportDirectory: $(System.DefaultWorkingDirectory)
+
+      - job: Frontend
+        displayName: Frontend Build Verification
+        dependsOn: Backend
+        pool:
+          vmImage: ubuntu-latest
+        variables:
+          workingDirectory: frontend
+        steps:
+          - checkout: self
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+            displayName: Use Node.js
+
+          - script: npm ci
+            workingDirectory: $(workingDirectory)
+            displayName: Install npm dependencies
+
+          - script: npm run build
+            workingDirectory: $(workingDirectory)
+            displayName: Build frontend
+
+  - stage: ContainerizeAndDeploy
+    displayName: Build Images & Deploy to Azure
+    dependsOn: BuildAndTest
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: Deploy
+        displayName: Build, Push, Deploy
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: AzureCLI@2
+            displayName: Build & push backend and frontend images
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                az acr login --name $(ACR_NAME)
+
+                backendImage="$(ACR_LOGIN_SERVER)/book-logger-backend:$(Build.SourceVersion)"
+                frontendImage="$(ACR_LOGIN_SERVER)/book-logger-frontend:$(Build.SourceVersion)"
+
+                docker build \
+                  -t "$backendImage" \
+                  -t "$(ACR_LOGIN_SERVER)/book-logger-backend:latest" \
+                  .
+
+                docker build \
+                  -t "$frontendImage" \
+                  -t "$(ACR_LOGIN_SERVER)/book-logger-frontend:latest" \
+                  -f frontend/Dockerfile \
+                  ./frontend
+
+                docker push "$backendImage"
+                docker push "$(ACR_LOGIN_SERVER)/book-logger-backend:latest"
+
+                docker push "$frontendImage"
+                docker push "$(ACR_LOGIN_SERVER)/book-logger-frontend:latest"
+
+                echo "##vso[task.setvariable variable=backendImageTag]$backendImage"
+
+          - task: AzureCLI@2
+            displayName: Deploy backend container to Azure Container Apps
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                az containerapp update \
+                  --name $(AZURE_CONTAINER_APP_NAME) \
+                  --resource-group $(AZURE_RESOURCE_GROUP) \
+                  --image $(backendImageTag) \
+                  --registry-server $(ACR_LOGIN_SERVER) \
+                  --registry-username $(ACR_USERNAME) \
+                  --registry-password $(ACR_PASSWORD)
+
