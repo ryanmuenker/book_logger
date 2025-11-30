@@ -31,10 +31,16 @@ def test_books_list_renders_books(auth_client, app):
     
     resp = auth_client.get("/books")
     assert resp.status_code == 200
-    assert "Book One" in resp.get_data(as_text=True)
+    assert resp.is_json
+    data = resp.get_json()
+    assert "books" in data
+    assert any(b.get("title") == "Book One" for b in data["books"])
+    
     detail_resp = auth_client.get(f"/books/{book_id}")
     assert detail_resp.status_code == 200
-    assert "Book One" in detail_resp.get_data(as_text=True)
+    assert detail_resp.is_json
+    detail_data = detail_resp.get_json()
+    assert detail_data["title"] == "Book One"
 
 
 def test_books_create_edit_delete_flow(auth_client, app):
@@ -94,9 +100,14 @@ def test_my_library_requires_login(client):
 
 def test_my_library_lists_entries(auth_client, app):
     auth_client.post("/api/add_to_library", json={"title": "Library Book", "author": "Someone"})
-    resp = auth_client.get("/my")
+    # /my redirects to /api/my.json, check the JSON endpoint directly
+    resp = auth_client.get("/api/my.json")
     assert resp.status_code == 200
-    assert "Library Book" in resp.get_data(as_text=True)
+    assert resp.is_json
+    data = resp.get_json()
+    assert isinstance(data, list)
+    # Check that the book appears in the library
+    assert any(entry.get("book", {}).get("title") == "Library Book" for entry in data)
 
 
 def test_export_json_and_csv(client, app):
@@ -110,8 +121,14 @@ def test_export_json_and_csv(client, app):
 
 
 def test_search_pages(client):
-    assert client.get("/search").status_code == 200
-    assert client.get("/").status_code == 302  # redirect to /books
+    # Both return JSON now (React frontend handles UI)
+    resp = client.get("/search")
+    assert resp.status_code == 200
+    assert resp.is_json
+    
+    home_resp = client.get("/")
+    assert home_resp.status_code == 200
+    assert home_resp.is_json
 
 
 def test_add_to_library_creates_book_and_link(auth_client, app):

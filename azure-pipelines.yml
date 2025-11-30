@@ -126,6 +126,7 @@ stages:
                 docker push "$(ACR_LOGIN_SERVER)/book-logger-frontend:latest"
 
                 echo "##vso[task.setvariable variable=backendImageTag]$backendImage"
+                echo "##vso[task.setvariable variable=frontendImageTag]$frontendImage"
 
           - task: AzureCLI@2
             displayName: Deploy backend container to Azure Container Apps
@@ -142,4 +143,41 @@ stages:
                   --registry-server $(ACR_LOGIN_SERVER) \
                   --registry-username $(ACR_USERNAME) \
                   --registry-password $(ACR_PASSWORD)
+
+          - task: AzureCLI@2
+            displayName: Deploy or update frontend container to Azure Container Apps
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                FRONTEND_APP_NAME="book-logger-frontend"
+                CONTAINER_ENV_NAME="book-logger-env"
+                
+                # Check if frontend Container App exists
+                if az containerapp show --name "$FRONTEND_APP_NAME" --resource-group $(AZURE_RESOURCE_GROUP) &>/dev/null; then
+                  echo "Frontend Container App exists, updating..."
+                  az containerapp update \
+                    --name "$FRONTEND_APP_NAME" \
+                    --resource-group $(AZURE_RESOURCE_GROUP) \
+                    --image $(frontendImageTag) \
+                    --registry-server $(ACR_LOGIN_SERVER) \
+                    --registry-username $(ACR_USERNAME) \
+                    --registry-password $(ACR_PASSWORD)
+                else
+                  echo "Frontend Container App does not exist, creating..."
+                  az containerapp create \
+                    --name "$FRONTEND_APP_NAME" \
+                    --resource-group $(AZURE_RESOURCE_GROUP) \
+                    --environment "$CONTAINER_ENV_NAME" \
+                    --image $(frontendImageTag) \
+                    --target-port 80 \
+                    --ingress external \
+                    --registry-server $(ACR_LOGIN_SERVER) \
+                    --registry-username $(ACR_USERNAME) \
+                    --registry-password $(ACR_PASSWORD) \
+                    --min-replicas 1 \
+                    --max-replicas 1
+                fi
 
