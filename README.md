@@ -1,6 +1,6 @@
 # Vocabulary Compendium / Book Logger
 
-A comprehensive book tracking and vocabulary learning application built with Flask + SQLite backend and React frontend (Vite + Tailwind + shadcn/ui). Features a full vocabulary flashcard system with spaced repetition, Goodreads import, and automatic definition fetching.
+A comprehensive book tracking and vocabulary learning application built with Flask + PostgreSQL backend and React frontend (Vite + Tailwind + shadcn/ui). Features a full vocabulary flashcard system with spaced repetition, Goodreads import, and automatic definition fetching. Deployed to Azure Container Apps with automated CI/CD via GitHub Actions.
 
 ## Features
 
@@ -150,8 +150,11 @@ A comprehensive book tracking and vocabulary learning application built with Fla
 - **Flask 3.0.3** - Web framework
 - **SQLAlchemy 3.1.1** - ORM and database management
 - **Flask-Login 0.6.3** - User authentication
-- **SQLite** - Database
+- **PostgreSQL** - Production database (Azure Database for PostgreSQL)
+- **SQLite** - Development database (fallback for local development)
+- **psycopg2-binary** - PostgreSQL database driver
 - **Requests** - HTTP client for external APIs
+- **Gunicorn** - Production WSGI server
 
 ### Frontend
 - **React 18** - UI framework
@@ -166,6 +169,16 @@ A comprehensive book tracking and vocabulary learning application built with Fla
 ### External APIs
 - **OpenLibrary API** - Book search and cover images
 - **Free Dictionary API** - Automatic definition fetching
+
+## Database
+
+### Production: PostgreSQL
+The application uses **PostgreSQL** for production deployments on Azure. The database is automatically created using SQLAlchemy's `db.create_all()` method.
+
+**Connection**: Configured via `DATABASE_URL` environment variable in Azure Container Apps.
+
+### Development: SQLite
+For local development, the application automatically falls back to **SQLite** if `DATABASE_URL` is not set. This allows developers to work without a database server.
 
 ## Database Schema (SQLAlchemy)
 
@@ -211,7 +224,7 @@ pytest --cov --cov-report=term --cov-report=html
 
 #### Build and Run with Docker Compose
 ```bash
-# Build and start all services
+# Build and start all services (includes Prometheus & Grafana)
 docker-compose up --build
 
 # Run in detached mode
@@ -224,11 +237,19 @@ docker-compose logs -f
 docker-compose down
 ```
 
+**Services included:**
+- Backend (Flask) on port 5001
+- Frontend (React/Nginx) on port 80
+- Prometheus (monitoring) on port 9090
+- Grafana (dashboards) on port 3000
+
 The application will be available at:
 - Frontend: `http://localhost`
-- Backend API: `http://localhost:5000`
-- Health check: `http://localhost:5000/health`
-- Metrics: `http://localhost:5000/metrics`
+- Backend API: `http://localhost:5001`
+- Health check: `http://localhost:5001/health`
+- Metrics: `http://localhost:5001/metrics`
+- Prometheus: `http://localhost:9090` (included in docker-compose)
+- Grafana: `http://localhost:3000` (included in docker-compose, admin/admin)
 
 #### Build Individual Images
 ```bash
@@ -282,17 +303,106 @@ Configure these secrets in your GitHub repository settings:
    ```
 
 #### Environment Variables
-Set these in your Azure Container App configuration:
-- `DATABASE_URL` - Database connection string
-- `SECRET_KEY` - Flask secret key for sessions
+
+**Backend Container App**:
+- `DATABASE_URL` - PostgreSQL connection string (format: `postgresql://user:password@host:5432/database?sslmode=require`)
+  - **Production**: Set to Azure PostgreSQL connection string
+  - **Local Development**: Omit to use SQLite
+- `SECRET_KEY` - Flask secret key for session management (stored as Container App secret)
+
+**Connection String Format**:
+```
+postgresql://booklogger:password@book-logger-db-ryan.postgres.database.azure.com:5432/booklogger?sslmode=require
+```
+
+#### Database Setup
+
+**Azure PostgreSQL Flexible Server**:
+- Database server: `book-logger-db-ryan.postgres.database.azure.com`
+- Database name: `booklogger`
+- Port: 5432
+- SSL: Required (automatically handled via connection string)
+
+**Firewall Rules**:
+- Allow Azure services to access the database (configured during setup)
+- Can be further restricted for security
+
+**Local Development**:
+- Uses SQLite if `DATABASE_URL` is not set
+- Database file: `app.sqlite3` in project root
 
 ### CI/CD Pipeline
 
-The GitHub Actions workflow (`.github/workflows/ci.yml`) includes:
-- **Backend Testing**: Runs pytest with coverage, fails if <70%
-- **Frontend Build**: Verifies frontend builds successfully
-- **Docker Build**: Builds backend and frontend images
-- **Azure Deployment**: Automatically deploys on `main` branch pushes only
+**Location**: `.github/workflows/ci.yml`
+
+The GitHub Actions workflow provides fully automated CI/CD with the following stages:
+
+#### Pipeline Overview
+
+**Trigger**: Runs on every push and pull request to `main` branch
+
+**Jobs**:
+1. **Backend Testing** (runs on all commits)
+   - Sets up Python 3.11 environment
+   - Installs dependencies from `requirements.txt`
+   - Runs pytest with coverage analysis
+   - **Enforces 70% minimum coverage** - pipeline fails if below threshold
+   - Uploads coverage reports as artifacts
+
+2. **Frontend Build** (runs after backend tests pass)
+   - Sets up Node.js 18 environment
+   - Installs npm dependencies with `npm ci`
+   - Runs production build to verify compilation
+   - Ensures frontend is ready for deployment
+
+3. **Build and Deploy** (only on `main` branch pushes)
+   - Builds Docker images for both backend and frontend
+   - Builds for `linux/amd64` platform (required for Azure)
+   - Tags images with both commit SHA and `latest`
+   - Pushes images to Azure Container Registry (ACR)
+   - Deploys backend Container App with new image
+   - Creates or updates frontend Container App
+   - Configures external ingress for both apps
+
+#### Key Pipeline Features
+
+- ✅ **Automated Testing**: Every commit is tested before deployment
+- ✅ **Coverage Enforcement**: Hard failure if coverage drops below 70%
+- ✅ **Parallel Execution**: Backend and frontend jobs can run simultaneously
+- ✅ **Branch Protection**: Only `main` branch triggers deployments
+- ✅ **Image Tagging**: SHA-based tags enable easy rollback
+- ✅ **Idempotent Deployment**: Handles both new and existing Container Apps
+- ✅ **Secure Secrets**: All sensitive data stored in GitHub Secrets
+
+#### Required GitHub Secrets
+
+Configure these in your repository settings (Settings → Secrets and variables → Actions):
+
+- `AZURE_ACR_LOGIN_SERVER` - Full ACR URL (e.g., `myregistry.azurecr.io`)
+- `AZURE_ACR_USERNAME` - ACR admin username
+- `AZURE_ACR_PASSWORD` - ACR admin password
+- `AZURE_ACR_NAME` - ACR registry name (without `.azurecr.io`)
+- `AZURE_CONTAINER_APP_NAME` - Backend Container App name (e.g., `book-logger-backend`)
+- `AZURE_RESOURCE_GROUP` - Azure resource group name
+- `AZURE_CREDENTIALS` - Azure service principal JSON (for authentication)
+
+#### Pipeline Flow
+
+```
+┌─────────────────┐
+│ Push to main    │
+└────────┬────────┘
+         │
+         ├─→ Backend Tests (pytest, coverage ≥70%)
+         │
+         ├─→ Frontend Build (npm build)
+         │
+         └─→ Build & Deploy (main branch only)
+              ├─→ Build Docker images
+              ├─→ Push to ACR
+              ├─→ Deploy Backend
+              └─→ Deploy Frontend
+```
 
 ## Monitoring
 
@@ -310,23 +420,27 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) includes:
   - `flask_exceptions_total` - Error count by exception type
 
 ### Prometheus Setup
-1. **Install Prometheus**:
-   ```bash
-   # Using Docker
-   docker run -d -p 9090:9090 \
-     -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml \
-     prom/prometheus
-   ```
 
-2. **Access Prometheus UI**: `http://localhost:9090`
+**Option 1: Using Docker Compose (Recommended for Local Development)**
+Prometheus and Grafana are automatically included when running `docker-compose up`. No additional setup required.
 
-3. **Example Queries**:
-   - Request rate: `rate(http_request_total[5m])`
-   - Error rate: `rate(http_request_total{status=~"5.."}[5m])`
-   - Average latency: `rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])`
+**Option 2: Standalone Prometheus**
+```bash
+# Using Docker
+docker run -d -p 9090:9090 \
+  -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml \
+  prom/prometheus
+```
+
+**Access Prometheus UI**: `http://localhost:9090`
+
+**Example Queries**:
+- Request rate: `rate(http_request_total[5m])`
+- Error rate: `rate(http_request_total{status=~"5.."}[5m])`
+- Average latency: `rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])`
 
 ### Grafana (Optional)
-Import Prometheus as a data source and create dashboards for:
+**Using Docker Compose**: Grafana is automatically available at `http://localhost:3000` (admin/admin). Import Prometheus as a data source and create dashboards for:
 - Request rate and latency
 - Error rates
 - Health check status
