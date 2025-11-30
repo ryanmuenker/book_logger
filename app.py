@@ -43,24 +43,9 @@ db.init_app(app)
 
 with app.app_context():
     from models import Book
-    try:
-        db.create_all()
-    except Exception as e:
-        # Tables might already exist, which is fine
-        if 'already exists' not in str(e).lower():
-            raise
-    # lightweight migration: ensure 'isbn' column exists on 'book'
-    try:
-        result = db.session.execute(text("PRAGMA table_info(book)"))
-        cols = {row[1] for row in result}
-        if 'isbn' not in cols:
-            db.session.execute(text("ALTER TABLE book ADD COLUMN isbn VARCHAR(20)"))
-            db.session.commit()
-        if 'cover_id' not in cols:
-            db.session.execute(text("ALTER TABLE book ADD COLUMN cover_id INTEGER"))
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
+    # Create all tables - SQLAlchemy handles this for both SQLite and PostgreSQL
+    db.create_all()
+    # Note: For production migrations, consider using Alembic
 
 # Register blueprints
 from routes.books import bp as books_bp
